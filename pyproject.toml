@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kubertree"
+version = "0.2.0"
+description = "A WizTree-style resource treemap and explorer for Kubernetes and OpenShift"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "kubernetes==31.0.0",
+    "PyYAML==6.0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
+    "ruff>=0.9",
+    "mypy>=1.14",
+    "pre-commit>=4.0",
+]
+
+[project.scripts]
+kubertree = "kubertree.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["kubertree"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["kubertree"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection markers are designed to be called in defaults.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+ignore_missing_imports = true

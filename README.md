@@ -46,9 +46,9 @@ and lets the cluster's RBAC be the guardrail.
 
 | Where it runs | How users authenticate | Setup |
 |---|---|---|
-| **Local** (`python app.py`) | Your `~/.kube/config` identity is used directly — no login screen. | none |
+| **Local** (`python -m kubertree`) | Your `~/.kube/config` identity is used directly — no login screen. | none |
 | **Vanilla Kubernetes** (in-cluster) | Paste a bearer token once; kept in an httpOnly session cookie. | front with TLS |
-| **OpenShift** (in-cluster) | Seamless SSO via the `oauth-proxy` sidecar (reuses the console login). | `oauthProxy.enabled=true` |
+| **OpenShift** (in-cluster) | SSO via the `oauth-proxy` sidecar (reuses the console login). | `oauthProxy.enabled=true` |
 
 In-cluster, kubertree **never** falls back to its own ServiceAccount — an
 unauthenticated request is rejected, so the app pod holds no standing cluster powers
@@ -59,8 +59,8 @@ own `oc whoami -t`.
 
 ## Run locally
 ```bash
-pip install -r requirements.txt
-python app.py          # http://127.0.0.1:8000 — uses ~/.kube/config as you
+pip install -e .
+python -m kubertree    # http://127.0.0.1:8000 — uses ~/.kube/config as you
 ```
 If the metrics API is not installed, kubertree falls back to request-based sizing
 and shows a banner.
@@ -91,25 +91,23 @@ kubectl create secret docker-registry regcred -n kubertree --create-namespace \
   --docker-username=poortuna --docker-password=$DOCKERHUB_TOKEN
 ```
 
-### OpenShift (recommended — seamless SSO)
+### OpenShift (SSO)
 ```bash
-helm install kubertree ./chart -n kubertree \
-  --set image.repository=docker.io/poortuna/kubertree --set image.tag=0.2.0 \
-  --set imagePullSecrets[0].name=regcred \
-  --set oauthProxy.enabled=true \
-  --set route.enabled=true
+helm install kubertree ./helm/kubertree -n kubertree --create-namespace \
+  --set image.tag=0.2.0 --set imagePullSecrets[0].name=regcred \
+  --set oauthProxy.enabled=true --set route.enabled=true
 ```
 The sidecar terminates TLS with an OpenShift service-serving cert and forwards each
-user's token; the Route is auto-configured for reencrypt.
+user's token; the Route is set to reencrypt automatically.
 
 ### Vanilla Kubernetes (token-paste login)
 ```bash
-helm install kubertree ./chart -n kubertree \
-  --set image.repository=docker.io/poortuna/kubertree --set image.tag=0.2.0 \
-  --set imagePullSecrets[0].name=regcred \
+helm install kubertree ./helm/kubertree -n kubertree --create-namespace \
+  --set image.tag=0.2.0 --set imagePullSecrets[0].name=regcred \
   --set ingress.enabled=true --set ingress.host=kubertree.example.com
 ```
-Terminate TLS at the ingress — the session cookie carries a bearer token.
+Terminate TLS at the ingress — the session cookie carries a bearer token. See
+[docs/HELM.md](docs/HELM.md) for all values.
 
 ## RBAC
 By design kubertree needs **no** ClusterRole of its own: actions run as the user, so
@@ -119,24 +117,14 @@ can only read their namespace sees only their namespace; a cluster-admin sees th
 whole cluster.
 
 ## Architecture
-| Concern | Module |
-|---|---|
-| Cluster config (in-cluster + kubeconfig) | `_k8s_client.py` |
-| Per-user auth (token → client, cache, cookie/header) | `_auth.py` |
-| Capability checks (SelfSubjectAccessReview) | `_access.py` |
-| Platform & metrics detection | `_platform.py` |
-| Usage from metrics API + quantity parsing | `_metrics.py` |
-| Pod listing (user-scoped) + generic owner climb | `_inventory.py` |
-| Hierarchy assembly | `_tree.py` |
-| Resource resolution + cascade delete | `_target.py`, `_resources.py` |
-| Tools (logs/yaml/events, scale/restart/undo, cordon/drain, exec) | `_inspect.py`, `_workload.py`, `_nodeops.py`, `_exec.py` |
-| HTTP API + static serving | `app.py`, `_api_*.py` |
-| D3 treemap + Explorer UI | `static/` |
+The backend is a `kubertree/` package split into `auth`, `k8s`, `tools`, and `api`;
+the frontend is vanilla ES modules under `kubertree/static`. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the module map and request flow.
 
 ## Tests
 ```bash
-pip install pytest
-pytest
+pip install -e ".[dev]"
+pytest tests/unit
 ```
 
 ## Limits

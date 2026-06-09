@@ -1,11 +1,34 @@
-.git
+# VCS
+.git/
 .gitignore
-tests
-conftest.py
-chart
+.gitattributes
+
+# IDE
+.idea/
+.vscode/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Repo assets not needed in the image
+docs/
+helm/
+tests/
+.github/
+.pre-commit-config.yaml
+
+# Logs / secrets
 *.log
-__pycache__
-*.pyc
-.pytest_cache
-.venv
-README.md
+.env
+.env.*
+
+# AI/agent
+.claude/
+CLAUDE.md

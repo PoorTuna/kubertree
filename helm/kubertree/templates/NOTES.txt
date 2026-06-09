@@ -1,0 +1,17 @@
+kubertree {{ .Chart.AppVersion }} is installed in namespace {{ .Release.Namespace }}.
+
+{{- if .Values.route.enabled }}
+Open the OpenShift Route:
+
+  oc get route {{ include "kubertree.fullname" . }} -n {{ .Release.Namespace }} -o jsonpath='{.spec.host}{"\n"}'
+{{- else if .Values.ingress.enabled }}
+Open: https://{{ .Values.ingress.host }}
+{{- else }}
+No Route or Ingress is enabled. Port-forward to reach the UI:
+
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "kubertree.fullname" . }} 8000:{{ .Values.service.port }}
+  open http://127.0.0.1:8000
+{{- end }}
+
+Authentication: {{ if .Values.oauthProxy.enabled }}OpenShift SSO via oauth-proxy — sign in with your cluster account.{{ else }}paste a bearer token on first load (kubectl create token <serviceaccount>).{{ end }}
+Every action runs as the signed-in user; the cluster's RBAC decides what is allowed.

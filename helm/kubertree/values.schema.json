@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "replicaCount": { "type": "integer", "minimum": 1 },
+    "image": { "$ref": "#/$defs/image" },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "name": { "type": "string" } }
+      }
+    },
+    "oauthProxy": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "OpenShift oauth-proxy sidecar for seamless SSO. Leave disabled on vanilla Kubernetes (token-paste login is used instead).",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": { "type": "string" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "className": { "type": "string" },
+        "host": { "type": "string" },
+        "annotations": { "$ref": "#/$defs/annotations" }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "OpenShift Route. Auto-configured for reencrypt TLS when oauthProxy.enabled.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "host": { "type": "string" },
+        "tls": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "termination": { "type": "string", "enum": ["edge", "passthrough", "reencrypt"] }
+          }
+        }
+      }
+    },
+    "resources": { "$ref": "#/$defs/resources" }
+  },
+  "$defs": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string" },
+        "tag": { "type": "string" },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": { "type": "object", "additionalProperties": true },
+        "limits": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "annotations": { "type": "object", "additionalProperties": { "type": "string" } }
+  }
+}

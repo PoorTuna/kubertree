@@ -1,0 +1,10 @@
+* text=auto
+
+# Shell scripts must keep LF endings (run in Linux containers).
+*.sh text eol=lf
+
+# Vendored browser libraries — exclude from language stats and diffs.
+kubertree/static/vendor/** linguist-vendored
+
+# Binary assets.
+*.png binary
