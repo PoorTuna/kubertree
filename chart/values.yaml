@@ -1,0 +1,41 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/poortuna/kubertree
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+# Name of a docker-registry secret for pulling from private GHCR.
+imagePullSecrets: []
+# - name: regcred
+
+service:
+  type: ClusterIP
+  port: 80
+
+# Generic Kubernetes ingress.
+ingress:
+  enabled: false
+  className: ""
+  host: kubertree.example.com
+  annotations: {}
+
+# OpenShift route (route.openshift.io/v1). Mutually exclusive with ingress.
+route:
+  enabled: false
+  host: ""
+  tls:
+    termination: edge
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 96Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+# Cluster-wide read + delete. Required for the treemap and cascade delete.
+# Set to false to bind your own (e.g. read-only) ClusterRole instead.
+rbac:
+  create: true

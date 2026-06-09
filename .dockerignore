@@ -1,0 +1,11 @@
+.git
+.gitignore
+tests
+conftest.py
+chart
+*.log
+__pycache__
+*.pyc
+.pytest_cache
+.venv
+README.md

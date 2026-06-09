@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>kubertree — resource treemap for Kubernetes &amp; OpenShift</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">▦</span>
+      <span class="title">kubertree</span>
+      <span id="platform-badge" class="badge"></span>
+    </div>
+    <div class="controls">
+      <label class="control">
+        Size
+        <select id="metric"></select>
+      </label>
+      <label class="control">
+        Color
+        <select id="color">
+          <option value="efficiency">Efficiency</option>
+          <option value="namespace">Namespace</option>
+        </select>
+      </label>
+      <label class="control toggle">
+        <input type="checkbox" id="autorefresh" />
+        Auto
+      </label>
+      <button id="refresh" class="btn">Refresh</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner hidden"></div>
+  <nav id="breadcrumb" class="breadcrumb"></nav>
+
+  <main class="stage">
+    <svg id="treemap"></svg>
+    <div id="tooltip" class="tooltip hidden"></div>
+    <aside id="panel" class="panel hidden"></aside>
+  </main>
+
+  <div id="modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="modal-title">Delete resource</h2>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn">Cancel</button>
+        <button id="modal-confirm" class="btn btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

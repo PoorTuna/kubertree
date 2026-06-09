@@ -1,0 +1,12 @@
+apiVersion: v2
+name: kubertree
+description: A WizTree-style resource treemap for Kubernetes and OpenShift
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - treemap
+  - resources
+  - optimization
+  - openshift
+home: https://github.com/poortuna/kubertree
