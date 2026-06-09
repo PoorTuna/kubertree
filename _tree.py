@@ -16,19 +16,35 @@ from _models import OwnerRef, Requests, TreeNode, Usage
 ChainResolver = Callable[[V1Pod], list[OwnerRef]]
 
 
-def build_tree(pods: list[V1Pod], usage: PodUsage, resolve_chain: ChainResolver) -> TreeNode:
-    """Build the cluster -> namespace -> owners -> pod -> container hierarchy."""
+def build_tree(
+    pods: list[V1Pod],
+    usage: PodUsage,
+    resolve_chain: ChainResolver,
+    group_by: str = "owner",
+) -> TreeNode:
+    """Build the resource hierarchy, grouped by ownership or by physical node.
+
+    ``group_by="owner"``: cluster -> namespace -> owner chain -> pod -> container.
+    ``group_by="node"``: cluster -> node -> (the same namespace/owner subtree).
+    """
     root = TreeNode(name="cluster", kind="Cluster")
     for pod in pods:
-        pod_node = _place_pod(root, pod, resolve_chain)
-        namespace = pod.metadata.namespace
-        _add_containers(pod_node, pod, usage.get((namespace, pod.metadata.name), {}))
+        start = _group_root(root, pod, group_by)
+        pod_node = _place_pod(start, pod, resolve_chain)
+        _add_containers(pod_node, pod, usage.get((pod.metadata.namespace, pod.metadata.name), {}))
     return root
 
 
-def _place_pod(root: TreeNode, pod: V1Pod, resolve_chain: ChainResolver) -> TreeNode:
+def _group_root(root: TreeNode, pod: V1Pod, group_by: str) -> TreeNode:
+    if group_by != "node":
+        return root
+    node_name = pod.spec.node_name or "(unscheduled)"
+    return root.child(node_name, lambda: TreeNode(name=node_name, kind="Node"))
+
+
+def _place_pod(start: TreeNode, pod: V1Pod, resolve_chain: ChainResolver) -> TreeNode:
     namespace = pod.metadata.namespace
-    parent = root.child(
+    parent = start.child(
         namespace,
         lambda: TreeNode(name=namespace, kind="Namespace", namespace=namespace, deletable=True),
     )

@@ -12,10 +12,18 @@ spec:
   to:
     kind: Service
     name: {{ include "kubertree.fullname" . }}
+  {{- if .Values.oauthProxy.enabled }}
+  port:
+    targetPort: https
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
+  {{- else }}
   port:
     targetPort: http
   {{- with .Values.route.tls }}
   tls:
     {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- end }}
 {{- end }}

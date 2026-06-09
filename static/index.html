@@ -3,59 +3,115 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>kubertree — resource treemap for Kubernetes &amp; OpenShift</title>
+  <title>kubertree</title>
+  <link rel="stylesheet" href="/static/vendor/xterm.css" />
   <link rel="stylesheet" href="/static/style.css" />
-  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="/static/vendor/d3.v7.min.js"></script>
+  <script src="/static/vendor/xterm.min.js"></script>
+  <script src="/static/vendor/xterm-addon-fit.min.js"></script>
 </head>
 <body>
+  <div id="login" class="login-overlay hidden">
+    <form id="login-form" class="login-card">
+      <span class="logo">▦</span>
+      <h2>Sign in to kubertree</h2>
+      <p class="login-hint">Paste your Kubernetes API token. kubertree acts as <em>you</em> —
+        you can only see and change what your own permissions allow.</p>
+      <input id="login-token" type="password" placeholder="Bearer token" autocomplete="off" />
+      <button type="submit" class="btn btn-accent full">Connect</button>
+      <p id="login-error" class="login-error hidden"></p>
+    </form>
+  </div>
+
   <header class="topbar">
     <div class="brand">
       <span class="logo">▦</span>
       <span class="title">kubertree</span>
       <span id="platform-badge" class="badge"></span>
     </div>
+
+    <div class="segmented tabs" id="tabs">
+      <button data-tab="treemap" class="active">Treemap</button>
+      <button data-tab="explorer">Explorer</button>
+    </div>
+
     <div class="controls">
-      <label class="control">
-        Size
+      <div class="segmented" id="group">
+        <button data-value="owner" class="active">Ownership</button>
+        <button data-value="node">Node</button>
+      </div>
+      <label class="control">Size
         <select id="metric"></select>
       </label>
-      <label class="control">
-        Color
+      <label class="control" id="color-control">Color
         <select id="color">
+          <option value="group">Group</option>
           <option value="efficiency">Efficiency</option>
-          <option value="namespace">Namespace</option>
+          <option value="kind">Kind</option>
         </select>
       </label>
-      <label class="control toggle">
-        <input type="checkbox" id="autorefresh" />
-        Auto
-      </label>
-      <button id="refresh" class="btn">Refresh</button>
+      <label class="control toggle"><input type="checkbox" id="autorefresh" />Auto</label>
+      <button id="refresh" class="btn">↻</button>
+      <span class="userbox">
+        <span id="username" class="username"></span>
+        <button id="logout" class="btn">Sign out</button>
+      </span>
     </div>
   </header>
 
   <div id="banner" class="banner hidden"></div>
-  <nav id="breadcrumb" class="breadcrumb"></nav>
 
-  <main class="stage">
-    <svg id="treemap"></svg>
+  <div class="subbar">
+    <nav id="breadcrumb" class="breadcrumb"></nav>
+    <div id="legend" class="legend"></div>
+  </div>
+
+  <div class="stagewrap">
+    <main id="stage-treemap" class="stage">
+      <svg id="treemap"></svg>
+    </main>
+
+    <section id="stage-explorer" class="stage hidden">
+      <div class="exbar">
+        <div class="segmented" id="exmode">
+          <button data-value="tree" class="active">Tree</button>
+          <button data-value="flat">Flat</button>
+        </div>
+        <span class="exhint">Click a row to drill in · right-click for tools</span>
+      </div>
+      <div id="explorer-table" class="extable"></div>
+    </section>
+
     <div id="tooltip" class="tooltip hidden"></div>
     <aside id="panel" class="panel hidden"></aside>
-  </main>
+    <div id="loading" class="loading hidden"><div class="spinner"></div></div>
+    <div id="ctxmenu" class="ctxmenu hidden"></div>
+  </div>
 
   <div id="modal" class="modal-overlay hidden">
     <div class="modal">
-      <h2 id="modal-title">Delete resource</h2>
+      <h2 id="modal-title">Confirm</h2>
       <div id="modal-body"></div>
       <div class="modal-actions">
         <button id="modal-cancel" class="btn">Cancel</button>
-        <button id="modal-confirm" class="btn btn-danger">Delete</button>
+        <button id="modal-confirm" class="btn btn-danger">Confirm</button>
       </div>
+    </div>
+  </div>
+
+  <div id="sheet" class="sheet-overlay hidden">
+    <div class="sheet">
+      <div class="sheet-head">
+        <span id="sheet-title" class="sheet-title"></span>
+        <span class="sheet-tools" id="sheet-tools"></span>
+        <span class="sheet-close" id="sheet-close">✕</span>
+      </div>
+      <div id="sheet-body" class="sheet-body"></div>
     </div>
   </div>
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="/static/app.js"></script>
+  <script type="module" src="/static/js/main.js"></script>
 </body>
 </html>

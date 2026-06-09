@@ -1,21 +1,6 @@
-{{- if .Values.rbac.create }}
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: {{ include "kubertree.fullname" . }}
-  labels:
-    {{- include "kubertree.labels" . | nindent 4 }}
-rules:
-  # Read every resource to build the ownership hierarchy and read pod specs.
-  - apiGroups: ["*"]
-    resources: ["*"]
-    verbs: ["get", "list", "watch"]
-  # Live usage from the metrics API.
-  - apiGroups: ["metrics.k8s.io"]
-    resources: ["pods", "nodes"]
-    verbs: ["get", "list"]
-  # Cascade delete of any owner the user selects in the UI.
-  - apiGroups: ["*"]
-    resources: ["*"]
-    verbs: ["delete"]
-{{- end }}
+{{- /*
+kubertree acts as the logged-in user, never as its own ServiceAccount, so it
+needs no standing cluster permissions of its own. The only binding it may need
+is to the built-in system:auth-delegator role, so the oauth-proxy sidecar can
+perform TokenReview/SubjectAccessReview on OpenShift — see clusterrolebinding.yaml.
+*/ -}}

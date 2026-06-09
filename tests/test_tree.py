@@ -12,7 +12,7 @@ from _models import OwnerRef, Usage
 from _tree import build_tree
 
 
-def make_pod(name, namespace, uid, requests=None, containers=("app",)):
+def make_pod(name, namespace, uid, requests=None, containers=("app",), node_name=None):
     spec_containers = [
         V1Container(
             name=container,
@@ -22,7 +22,7 @@ def make_pod(name, namespace, uid, requests=None, containers=("app",)):
     ]
     return V1Pod(
         metadata=V1ObjectMeta(name=name, namespace=namespace, uid=uid),
-        spec=V1PodSpec(containers=spec_containers),
+        spec=V1PodSpec(containers=spec_containers, node_name=node_name),
     )
 
 
@@ -81,6 +81,22 @@ def test_usage_merges_onto_container_leaf():
     container = root.children["default"].children["pod-uid"].children["app"]
     assert container.cpu_usage == 42.0
     assert container.mem_usage == 2048.0
+
+
+def test_node_grouping_roots_under_node_then_namespace():
+    pod = make_pod("web-abc", "default", "pod-uid", node_name="worker-1")
+    root = build_tree([pod], {}, lambda _p: deployment_chain(), group_by="node")
+
+    node = root.children["worker-1"]
+    assert node.kind == "Node"
+    assert node.children["default"].children["deploy-uid"].kind == "Deployment"
+
+
+def test_node_grouping_unscheduled_pod_falls_back():
+    pod = make_pod("pending", "default", "pod-uid", node_name=None)
+    root = build_tree([pod], {}, lambda _p: [], group_by="node")
+
+    assert "(unscheduled)" in root.children
 
 
 def test_to_dict_emits_children_for_internal_and_values_for_leaf():

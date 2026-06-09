@@ -1,14 +1,17 @@
-{{- if .Values.rbac.create }}
+{{- if .Values.oauthProxy.enabled }}
+# oauth-proxy (openshift provider) validates user tokens via TokenReview and
+# SubjectAccessReview, which require the delegated-auth role. No resource
+# permissions are granted to the app itself — users carry their own.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "kubertree.fullname" . }}
+  name: {{ include "kubertree.fullname" . }}-auth-delegator
   labels:
     {{- include "kubertree.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ include "kubertree.fullname" . }}
+  name: system:auth-delegator
 subjects:
   - kind: ServiceAccount
     name: {{ include "kubertree.serviceAccountName" . }}

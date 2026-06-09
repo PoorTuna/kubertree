@@ -4,11 +4,21 @@ metadata:
   name: {{ include "kubertree.fullname" . }}
   labels:
     {{- include "kubertree.labels" . | nindent 4 }}
+  {{- if .Values.oauthProxy.enabled }}
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: {{ include "kubertree.fullname" . }}-tls
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
   selector:
     {{- include "kubertree.selectorLabels" . | nindent 4 }}
   ports:
+    {{- if .Values.oauthProxy.enabled }}
+    - name: https
+      port: {{ .Values.service.port }}
+      targetPort: https
+    {{- else }}
     - name: http
       port: {{ .Values.service.port }}
       targetPort: http
+    {{- end }}

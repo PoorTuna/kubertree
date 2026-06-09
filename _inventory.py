@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 
+from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1OwnerReference, V1Pod
 from kubernetes.dynamic.exceptions import DynamicApiError, ResourceNotFoundError
 
@@ -18,10 +19,64 @@ from _models import OwnerRef
 
 logger = logging.getLogger(__name__)
 
+_FORBIDDEN = 403
+_PROJECT_API = "project.openshift.io/v1"
+
 
 def list_pods(clients: ClusterClients) -> list[V1Pod]:
-    """Return every pod in the cluster in a single API call."""
-    return clients.core.list_pod_for_all_namespaces().items
+    """Return the pods the user can read, cluster-wide or per visible namespace.
+
+    A cluster-admin lists every pod in one call; a namespaced user, denied the
+    cluster-wide list, gets only the pods in the namespaces they can read.
+    """
+    try:
+        return clients.core.list_pod_for_all_namespaces().items
+    except ApiException as exc:
+        if exc.status != _FORBIDDEN:
+            raise
+    pods: list[V1Pod] = []
+    for namespace in _readable_namespaces(clients):
+        try:
+            pods.extend(clients.core.list_namespaced_pod(namespace).items)
+        except ApiException as exc:
+            logger.debug("Skipping namespace %s: %s", namespace, exc)
+    return pods
+
+
+def list_node_capacity(clients: ClusterClients) -> dict[str, tuple[float, float]]:
+    """Return allocatable ``(cpu_milli, mem_bytes)`` per node name the user can see."""
+    from _metrics import cpu_to_milli, memory_to_bytes
+
+    try:
+        nodes = clients.core.list_node().items
+    except ApiException as exc:
+        logger.debug("Node capacity unavailable: %s", exc)
+        return {}
+    capacity: dict[str, tuple[float, float]] = {}
+    for node in nodes:
+        allocatable = node.status.allocatable or {}
+        capacity[node.metadata.name] = (
+            cpu_to_milli(allocatable["cpu"]) if "cpu" in allocatable else 0.0,
+            memory_to_bytes(allocatable["memory"]) if "memory" in allocatable else 0.0,
+        )
+    return capacity
+
+
+def _readable_namespaces(clients: ClusterClients) -> list[str]:
+    try:
+        return [ns.metadata.name for ns in clients.core.list_namespace().items]
+    except ApiException as exc:
+        logger.debug("Namespace list denied, trying OpenShift projects: %s", exc)
+        return _openshift_projects(clients)
+
+
+def _openshift_projects(clients: ClusterClients) -> list[str]:
+    try:
+        resource = clients.dynamic.resources.get(api_version=_PROJECT_API, kind="Project")
+        return [item["metadata"]["name"] for item in resource.get().to_dict()["items"]]
+    except (ResourceNotFoundError, DynamicApiError) as exc:
+        logger.debug("Project discovery failed: %s", exc)
+        return []
 
 
 class OwnerResolver:

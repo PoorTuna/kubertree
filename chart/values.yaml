@@ -1,26 +1,41 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/poortuna/kubertree
-  tag: "0.1.0"
+  repository: docker.io/poortuna/kubertree
+  tag: "0.2.0"
   pullPolicy: IfNotPresent
 
-# Name of a docker-registry secret for pulling from private GHCR.
+# Name of a docker-registry secret for pulling from a private Docker Hub repo.
 imagePullSecrets: []
 # - name: regcred
+
+# Per-user authentication. kubertree always acts as the logged-in user, never as
+# its own ServiceAccount.
+#
+#   OpenShift: set oauthProxy.enabled=true for seamless SSO. A sidecar handles
+#   the OpenShift login and forwards each user's token; the app SA gets only the
+#   system:auth-delegator role (no resource powers).
+#
+#   Vanilla Kubernetes: leave it off. Users sign in by pasting their bearer token,
+#   which is kept in an httpOnly session cookie. Front this with TLS (ingress).
+oauthProxy:
+  enabled: false
+  image: quay.io/openshift/origin-oauth-proxy:4.14
+  port: 8443
 
 service:
   type: ClusterIP
   port: 80
 
-# Generic Kubernetes ingress.
+# Generic Kubernetes ingress (token-paste auth). Terminate TLS here.
 ingress:
   enabled: false
   className: ""
   host: kubertree.example.com
   annotations: {}
 
-# OpenShift route (route.openshift.io/v1). Mutually exclusive with ingress.
+# OpenShift route. With oauthProxy.enabled it is auto-configured for reencrypt TLS
+# to the sidecar; otherwise it targets the plain HTTP port.
 route:
   enabled: false
   host: ""
@@ -34,8 +49,3 @@ resources:
   limits:
     cpu: 250m
     memory: 256Mi
-
-# Cluster-wide read + delete. Required for the treemap and cascade delete.
-# Set to false to bind your own (e.g. read-only) ClusterRole instead.
-rbac:
-  create: true

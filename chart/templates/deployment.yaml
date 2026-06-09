@@ -21,6 +21,11 @@ spec:
         - name: kubertree
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Bound to localhost: only the in-pod oauth-proxy may reach it when the
+          # proxy is enabled, so the API is never exposed without authentication.
+          env:
+            - name: KUBERTREE_HOST
+              value: {{ if .Values.oauthProxy.enabled }}"127.0.0.1"{{ else }}"0.0.0.0"{{ end }}
           ports:
             - name: http
               containerPort: 8000
@@ -31,14 +36,52 @@ spec:
           livenessProbe:
             httpGet:
               path: /api/health
-              port: http
+              port: 8000
             initialDelaySeconds: 5
             periodSeconds: 20
           readinessProbe:
             httpGet:
               path: /api/health
-              port: http
+              port: 8000
             initialDelaySeconds: 3
             periodSeconds: 10
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+        {{- if .Values.oauthProxy.enabled }}
+        - name: oauth-proxy
+          image: {{ .Values.oauthProxy.image }}
+          args:
+            - --provider=openshift
+            - --https-address=:{{ .Values.oauthProxy.port }}
+            - --http-address=
+            - --upstream=http://127.0.0.1:8000
+            - --openshift-service-account={{ include "kubertree.serviceAccountName" . }}
+            - --tls-cert=/etc/tls/private/tls.crt
+            - --tls-key=/etc/tls/private/tls.key
+            - --cookie-secret-file=/etc/proxy/secrets/session_secret
+            - --pass-access-token
+            - --pass-user-headers
+          ports:
+            - name: https
+              containerPort: {{ .Values.oauthProxy.port }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: proxy-tls
+              mountPath: /etc/tls/private
+            - name: proxy-secret
+              mountPath: /etc/proxy/secrets
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+      volumes:
+        - name: proxy-tls
+          secret:
+            secretName: {{ include "kubertree.fullname" . }}-tls
+        - name: proxy-secret
+          secret:
+            secretName: {{ include "kubertree.fullname" . }}-proxy
+        {{- end }}

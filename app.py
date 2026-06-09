@@ -2,6 +2,10 @@
 
 Run locally with ``python app.py`` (uses ~/.kube/config) or in-cluster via the
 Helm chart. Serves the D3 frontend and a small JSON API over the cluster.
+
+Every cluster call is made as the requesting user (see :mod:`_auth`); the app
+itself holds no standing cluster powers. Only capability discovery at startup
+uses the ambient config, and only for read-only API discovery.
 """
 
 from __future__ import annotations
@@ -12,17 +16,20 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
+import _api_actions
+import _api_auth
+import _api_exec
+import _api_inspect
 import _platform
-from _inventory import OwnerResolver, list_pods
-from _k8s_client import ClusterClients, ClusterConnectionError, load_clients
+from _auth import ambient_clients, require_user_clients
+from _inventory import OwnerResolver, list_node_capacity, list_pods
+from _k8s_client import ClusterClients, ClusterConnectionError
 from _metrics import fetch_pod_usage
-from _models import Platform
-from _resources import DeleteError, DeleteTarget, delete_resource
+from _state import state
 from _tree import build_tree
 
 logging.basicConfig(level=logging.INFO)
@@ -31,47 +38,26 @@ logger = logging.getLogger("kubertree")
 _STATIC_DIR = Path(__file__).parent / "static"
 
 
-class _State:
-    clients: ClusterClients | None = None
-    platform: Platform | None = None
-
-
-state = _State()
-
-
-class DeleteRequest(BaseModel):
-    apiVersion: str
-    kind: str
-    name: str
-    namespace: str | None = None
-
-
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     try:
-        state.clients = load_clients()
-        state.platform = _platform.detect(state.clients)
+        state.platform = _platform.detect(ambient_clients())
+        state.reachable = True
         logger.info("Connected: %s, metrics=%s", state.platform.kind, state.platform.metrics_available)
     except ClusterConnectionError as exc:
-        logger.error("No cluster connection: %s", exc)
+        logger.error("No ambient cluster config for capability probe: %s", exc)
     yield
 
 
 app = FastAPI(title="kubertree", lifespan=lifespan)
 
 
-def _require_clients() -> ClusterClients:
-    if state.clients is None:
-        raise HTTPException(status_code=503, detail="No cluster connection")
-    return state.clients
-
-
 @app.get("/api/health")
 def health() -> dict:
-    if state.clients is None or state.platform is None:
+    if state.platform is None:
         return {"reachable": False, "platform": None, "metricsAvailable": False, "version": ""}
     return {
-        "reachable": True,
+        "reachable": state.reachable,
         "platform": state.platform.kind,
         "metricsAvailable": state.platform.metrics_available,
         "version": state.platform.server_version,
@@ -79,33 +65,21 @@ def health() -> dict:
 
 
 @app.get("/api/tree")
-def tree() -> dict:
-    clients = _require_clients()
+def tree(group: str = "owner", clients: ClusterClients = Depends(require_user_clients)) -> dict:
+    if group not in ("owner", "node"):
+        raise HTTPException(status_code=400, detail="group must be 'owner' or 'node'")
     platform = state.platform
     usage = fetch_pod_usage(clients) if platform and platform.metrics_available else {}
     resolver = OwnerResolver(clients)
-    root = build_tree(list_pods(clients), usage, resolver.resolve_chain)
+    root = build_tree(list_pods(clients), usage, resolver.resolve_chain, group_by=group)
+    capacity = {name: {"cpu": cpu, "mem": mem} for name, (cpu, mem) in list_node_capacity(clients).items()}
     return {
         "platform": platform.kind if platform else "kubernetes",
         "metricsAvailable": bool(platform and platform.metrics_available),
+        "group": group,
+        "nodeCapacity": capacity,
         "tree": root.to_dict(),
     }
-
-
-@app.post("/api/delete")
-def delete(request: DeleteRequest) -> dict:
-    clients = _require_clients()
-    target = DeleteTarget(
-        api_version=request.apiVersion,
-        kind=request.kind,
-        name=request.name,
-        namespace=request.namespace,
-    )
-    try:
-        delete_resource(clients, target)
-    except DeleteError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"deleted": True, "kind": request.kind, "name": request.name}
 
 
 @app.get("/")
@@ -113,6 +87,10 @@ def index() -> FileResponse:
     return FileResponse(_STATIC_DIR / "index.html")
 
 
+app.include_router(_api_auth.router)
+app.include_router(_api_inspect.router)
+app.include_router(_api_actions.router)
+app.include_router(_api_exec.router)
 app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
 

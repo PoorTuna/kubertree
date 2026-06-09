@@ -5,8 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py _k8s_client.py _platform.py _metrics.py _inventory.py _tree.py \
-     _resources.py _models.py ./
+COPY *.py ./
 COPY static ./static
 
 # OpenShift runs containers with an arbitrary non-root UID in group 0.
