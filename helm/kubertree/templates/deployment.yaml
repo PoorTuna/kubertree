@@ -24,7 +24,7 @@ spec:
           # Bound to localhost: only the in-pod oauth-proxy may reach it when the
           # proxy is enabled, so the API is never exposed without authentication.
           env:
-            - name: KUBERTREE_HOST
+            - name: KUBERTREE_BIND_HOST
               value: {{ if .Values.oauthProxy.enabled }}"127.0.0.1"{{ else }}"0.0.0.0"{{ end }}
           ports:
             - name: http

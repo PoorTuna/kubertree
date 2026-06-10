@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: docker.io/poortuna/kubertree
-  tag: "0.2.0"
+  tag: "0.2.1"
   pullPolicy: IfNotPresent
 
 # Name of a docker-registry secret for pulling from a private Docker Hub repo.

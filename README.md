@@ -68,19 +68,23 @@ and shows a banner.
 ### Configuration (env vars)
 | Variable | Default | Purpose |
 |---|---|---|
-| `KUBERTREE_HOST` | `127.0.0.1` | Bind address (`0.0.0.0` in the image) |
-| `KUBERTREE_PORT` | `8000` | Bind port |
+| `KUBERTREE_BIND_HOST` | `127.0.0.1` | Bind address (`0.0.0.0` in the image) |
+| `KUBERTREE_BIND_PORT` | `8000` | Bind port |
 | `KUBECONFIG` | `~/.kube/config` | Kubeconfig path for local runs |
+
+> The bind vars are `KUBERTREE_BIND_*` (not `KUBERTREE_PORT`) so they never clash
+> with the `KUBERTREE_PORT=tcp://…` env Kubernetes injects for a Service named
+> `kubertree`.
 
 ## Container
 All-in-one image (backend serves the static UI). OpenShift-safe: runs as an arbitrary
 non-root UID in group 0. Published to **Docker Hub**.
 ```bash
-docker build -t docker.io/poortuna/kubertree:0.2.0 .
+docker build -t docker.io/poortuna/kubertree:0.2.1 .
 docker run -p 8000:8000 -v ~/.kube/config:/app/.kube/config:ro \
-  -e KUBERTREE_HOST=0.0.0.0 -e KUBECONFIG=/app/.kube/config \
-  docker.io/poortuna/kubertree:0.2.0
-docker push docker.io/poortuna/kubertree:0.2.0     # private Docker Hub
+  -e KUBECONFIG=/app/.kube/config \
+  docker.io/poortuna/kubertree:0.2.1
+docker push docker.io/poortuna/kubertree:0.2.1     # private Docker Hub
 ```
 
 ## Deploy with Helm
@@ -94,7 +98,7 @@ kubectl create secret docker-registry regcred -n kubertree --create-namespace \
 ### OpenShift (SSO)
 ```bash
 helm install kubertree ./helm/kubertree -n kubertree --create-namespace \
-  --set image.tag=0.2.0 --set imagePullSecrets[0].name=regcred \
+  --set image.tag=0.2.1 --set imagePullSecrets[0].name=regcred \
   --set oauthProxy.enabled=true --set route.enabled=true
 ```
 The sidecar terminates TLS with an OpenShift service-serving cert and forwards each
@@ -103,7 +107,7 @@ user's token; the Route is set to reencrypt automatically.
 ### Vanilla Kubernetes (token-paste login)
 ```bash
 helm install kubertree ./helm/kubertree -n kubertree --create-namespace \
-  --set image.tag=0.2.0 --set imagePullSecrets[0].name=regcred \
+  --set image.tag=0.2.1 --set imagePullSecrets[0].name=regcred \
   --set ingress.enabled=true --set ingress.host=kubertree.example.com
 ```
 Terminate TLS at the ingress — the session cookie carries a bearer token. See

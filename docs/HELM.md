@@ -7,7 +7,7 @@ Chart: `helm/kubertree`. Values are validated against `values.schema.json`.
 | Key | Default | Purpose |
 |---|---|---|
 | `image.repository` | `docker.io/poortuna/kubertree` | Image (Docker Hub) |
-| `image.tag` | `0.2.0` | Image tag |
+| `image.tag` | `0.2.1` | Image tag |
 | `imagePullSecrets` | `[]` | Pull secret(s) for a private repo |
 | `oauthProxy.enabled` | `false` | OpenShift SSO sidecar |
 | `oauthProxy.image` | `quay.io/openshift/origin-oauth-proxy:4.14` | Proxy image |
@@ -20,7 +20,7 @@ Chart: `helm/kubertree`. Values are validated against `values.schema.json`.
 
 ```bash
 helm install kubertree ./helm/kubertree -n kubertree --create-namespace \
-  --set image.tag=0.2.0 \
+  --set image.tag=0.2.1 \
   --set oauthProxy.enabled=true \
   --set route.enabled=true
 ```
@@ -34,7 +34,7 @@ TokenReview/SubjectAccessReview — no resource permissions are granted to the a
 
 ```bash
 helm install kubertree ./helm/kubertree -n kubertree --create-namespace \
-  --set image.tag=0.2.0 \
+  --set image.tag=0.2.1 \
   --set ingress.enabled=true --set ingress.host=kubertree.example.com
 ```
 

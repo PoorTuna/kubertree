@@ -4,6 +4,17 @@
 
 ---
 
+## 0.2.1
+
+### Fixed
+- App crashed on startup in-cluster when the Service is named `kubertree`:
+  Kubernetes injects `KUBERTREE_PORT=tcp://<clusterIP>:<port>`, which the old
+  `KUBERTREE_PORT` bind variable tried to parse as an integer. The bind variables
+  are now `KUBERTREE_BIND_HOST` / `KUBERTREE_BIND_PORT` (no collision), and the
+  port parse tolerates a non-numeric value.
+
+---
+
 ## 0.2.0
 
 ### Added

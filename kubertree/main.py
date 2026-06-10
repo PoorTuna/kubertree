@@ -101,9 +101,23 @@ app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
 
 def main() -> None:
-    host = os.environ.get("KUBERTREE_HOST", "127.0.0.1")
-    port = int(os.environ.get("KUBERTREE_PORT", "8000"))
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(
+        app,
+        host=os.environ.get("KUBERTREE_BIND_HOST", "127.0.0.1"),
+        port=_bind_port(),
+    )
+
+
+def _bind_port() -> int:
+    # KUBERTREE_BIND_* is used (not KUBERTREE_PORT) to avoid clashing with the
+    # KUBERTREE_PORT=tcp://<clusterIP>:<port> env Kubernetes injects for a
+    # same-named Service. Still tolerate a non-numeric value as a safety net.
+    raw = os.environ.get("KUBERTREE_BIND_PORT", "8000")
+    try:
+        return int(raw)
+    except ValueError:
+        logger.warning("Ignoring non-numeric KUBERTREE_BIND_PORT=%r; using 8000", raw)
+        return 8000
 
 
 if __name__ == "__main__":

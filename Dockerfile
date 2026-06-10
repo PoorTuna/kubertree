@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir .
 RUN chgrp -R 0 /app && chmod -R g=u /app
 
 USER 1001
-ENV KUBERTREE_HOST=0.0.0.0 KUBERTREE_PORT=8000
+ENV KUBERTREE_BIND_HOST=0.0.0.0 KUBERTREE_BIND_PORT=8000
 EXPOSE 8000
 
 CMD ["python", "-m", "kubertree"]
